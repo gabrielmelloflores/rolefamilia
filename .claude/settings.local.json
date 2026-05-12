@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm config *)",
+      "Read(//c/Users/Win/Documents/Projetos/**)",
+      "Bash(npx create-next-app@latest role-familia --typescript --tailwind --app --src-dir --import-alias \"@/*\" --no-eslint --no-git --use-npm)"
+    ]
+  }
+}
