@@ -1,0 +1,370 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─────────────────────────────────────
+// AUTH
+// ─────────────────────────────────────
+
+model AdminUser {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  password  String
+  name      String
+  role      AdminRole @default(EDITOR)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("admin_users")
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  EDITOR
+}
+
+// ─────────────────────────────────────
+// TAXONOMY
+// ─────────────────────────────────────
+
+model Category {
+  id          String         @id @default(cuid())
+  name        String
+  slug        String         @unique
+  description String?
+  color       String?
+  createdAt   DateTime       @default(now())
+
+  posts       PostCategory[]
+
+  @@map("categories")
+}
+
+model Tag {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  createdAt DateTime  @default(now())
+
+  posts     PostTag[]
+
+  @@map("tags")
+}
+
+// ─────────────────────────────────────
+// DESTINATIONS
+// ─────────────────────────────────────
+
+model Destination {
+  id          String      @id @default(cuid())
+  name        String
+  slug        String      @unique
+  country     String
+  countryCode String
+  continent   Continent
+  region      String?
+  coverImage  String
+  description String
+  content     Json?
+  latitude    Float?
+  longitude   Float?
+  isPublished Boolean     @default(false)
+  isFeatured  Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  posts       Post[]
+  itineraries Itinerary[]
+
+  @@index([continent])
+  @@index([isPublished])
+  @@map("destinations")
+}
+
+enum Continent {
+  AMERICA_DO_SUL
+  AMERICA_DO_NORTE
+  AMERICA_CENTRAL
+  EUROPA
+  AFRICA
+  ASIA
+  OCEANIA
+  ORIENTE_MEDIO
+}
+
+// ─────────────────────────────────────
+// BLOG
+// ─────────────────────────────────────
+
+model Post {
+  id            String       @id @default(cuid())
+  title         String
+  slug          String       @unique
+  excerpt       String
+  content       Json
+  coverImage    String
+  altText       String?
+  status        PostStatus   @default(DRAFT)
+  publishedAt   DateTime?
+  views         Int          @default(0)
+  readingTime   Int          @default(0)
+  seoTitle      String?
+  seoDesc       String?
+  ogImage       String?
+  destinationId String?
+  destination   Destination? @relation(fields: [destinationId], references: [id])
+  categories    PostCategory[]
+  tags          PostTag[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([status])
+  @@index([publishedAt])
+  @@index([destinationId])
+  @@map("posts")
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model PostCategory {
+  postId     String
+  post       Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([postId, categoryId])
+  @@map("posts_categories")
+}
+
+model PostTag {
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tagId  String
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+  @@map("posts_tags")
+}
+
+// ─────────────────────────────────────
+// ITINERARIES
+// ─────────────────────────────────────
+
+model Itinerary {
+  id            String         @id @default(cuid())
+  title         String
+  slug          String         @unique
+  coverImage    String
+  summary       String
+  duration      Int
+  difficulty    Difficulty
+  priceFrom     Decimal        @db.Decimal(10, 2)
+  currency      String         @default("BRL")
+  highlights    String[]
+  overview      Json?
+  included      String[]
+  notIncluded   String[]
+  howToGetThere Json?
+  meetingPoint  String?
+  destinationId String?
+  destination   Destination?   @relation(fields: [destinationId], references: [id])
+  days          ItineraryDay[]
+  isPublished   Boolean        @default(false)
+  isFeatured    Boolean        @default(false)
+  seoTitle      String?
+  seoDesc       String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([destinationId])
+  @@index([isPublished])
+  @@map("itineraries")
+}
+
+enum Difficulty {
+  FACIL
+  MODERADO
+  DIFICIL
+}
+
+model ItineraryDay {
+  id               String    @id @default(cuid())
+  itineraryId      String
+  itinerary        Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+  dayNumber        Int
+  title            String
+  description      Json?
+  accommodation    String?
+  accommodationUrl String?
+  meals            Meal[]
+  activities       Json?
+  images           String[]
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([itineraryId, dayNumber])
+  @@index([itineraryId])
+  @@map("itinerary_days")
+}
+
+enum Meal {
+  CAFE_DA_MANHA
+  ALMOCO
+  JANTAR
+}
+
+// ─────────────────────────────────────
+// DIGITAL SHOP
+// ─────────────────────────────────────
+
+model Product {
+  id              String      @id @default(cuid())
+  name            String
+  slug            String      @unique
+  description     String
+  content         Json?
+  type            ProductType
+  price           Decimal     @db.Decimal(10, 2)
+  currency        String      @default("BRL")
+  coverImage      String
+  previewImages   String[]
+  fileUrl         String?
+  fileName        String?
+  stripeProductId String?     @unique
+  stripePriceId   String?     @unique
+  isPublished     Boolean     @default(false)
+  isFeatured      Boolean     @default(false)
+  seoTitle        String?
+  seoDesc         String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  orders          Order[]
+
+  @@index([type])
+  @@index([isPublished])
+  @@map("products")
+}
+
+enum ProductType {
+  EBOOK
+  MAPA
+  BUNDLE
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  productId       String
+  product         Product     @relation(fields: [productId], references: [id])
+  customerEmail   String
+  customerName    String?
+  stripeSessionId String      @unique
+  stripePaymentId String?
+  amount          Decimal     @db.Decimal(10, 2)
+  currency        String      @default("BRL")
+  status          OrderStatus @default(PENDING)
+  downloadToken   String      @unique @default(cuid())
+  downloadCount   Int         @default(0)
+  maxDownloads    Int         @default(3)
+  expiresAt       DateTime
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([customerEmail])
+  @@index([status])
+  @@index([downloadToken])
+  @@map("orders")
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  DELIVERED
+  EXPIRED
+  REFUNDED
+}
+
+// ─────────────────────────────────────
+// AFFILIATE LINKS
+// ─────────────────────────────────────
+
+model AffiliateLink {
+  id          String            @id @default(cuid())
+  name        String
+  provider    AffiliateProvider
+  url         String
+  description String?
+  clicks      Int               @default(0)
+  isActive    Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([provider])
+  @@map("affiliate_links")
+}
+
+enum AffiliateProvider {
+  BOOKING
+  HOLAFLY
+  SEGUROS_PROMO
+  OTHER
+}
+
+// ─────────────────────────────────────
+// NEWSLETTER
+// ─────────────────────────────────────
+
+model Subscriber {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  name           String?
+  confirmToken   String?   @unique
+  confirmedAt    DateTime?
+  unsubscribedAt DateTime?
+  source         String?
+  createdAt      DateTime  @default(now())
+
+  @@index([confirmedAt])
+  @@map("subscribers")
+}
+
+// ─────────────────────────────────────
+// YOUTUBE
+// ─────────────────────────────────────
+
+model YouTubeVideo {
+  id          String   @id @default(cuid())
+  videoId     String   @unique
+  title       String
+  description String?
+  thumbnail   String
+  duration    String?
+  viewCount   Int?
+  publishedAt DateTime
+  syncedAt    DateTime @default(now())
+
+  @@index([publishedAt])
+  @@map("youtube_videos")
+}
+
+// ─────────────────────────────────────
+// SITE SETTINGS
+// ─────────────────────────────────────
+
+model SiteSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("site_settings")
+}
