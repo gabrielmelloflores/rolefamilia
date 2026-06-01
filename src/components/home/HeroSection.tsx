@@ -9,7 +9,7 @@ interface HeroSectionProps {
 }
 
 export function HeroSection({ coverImage }: HeroSectionProps) {
-  const bg = coverImage ?? "/og-default.jpg";
+  const bg = coverImage ?? "https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1600&q=80";
 
   return (
     <section className="relative h-screen min-h-[600px] flex flex-col items-center justify-center overflow-hidden">
